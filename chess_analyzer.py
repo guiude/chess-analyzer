@@ -27,15 +27,18 @@ class ChessAnalyzer:
         """Find Stockfish engine on the system."""
         # Common locations for Stockfish
         home = os.path.expanduser('~')
+        app_dir = os.path.dirname(os.path.abspath(__file__))
         possible_paths = [
-            os.path.join(home, 'bin', 'stockfish'),  # Render deployment
+            os.path.join(app_dir, 'bin', 'stockfish'),  # Project bin folder (Render)
+            os.path.join(home, 'bin', 'stockfish'),  # Home bin folder
+            './bin/stockfish',  # Relative path
             '/usr/local/bin/stockfish',
             '/usr/bin/stockfish',
             '/usr/games/stockfish',
             '/opt/homebrew/bin/stockfish',
             'stockfish',  # If in PATH
-            os.path.join(os.path.dirname(__file__), 'stockfish'),
-            os.path.join(os.path.dirname(__file__), 'engines', 'stockfish'),
+            os.path.join(app_dir, 'stockfish'),
+            os.path.join(app_dir, 'engines', 'stockfish'),
         ]
         
         # Check environment variable first

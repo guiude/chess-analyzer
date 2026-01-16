@@ -7,29 +7,41 @@ set -e
 pip install -r requirements.txt
 
 # Download and install Stockfish
-echo "Installing Stockfish..."
+echo "=== Installing Stockfish ==="
 
-# Create bin directory
-mkdir -p $HOME/bin
+# Create bin directory in the project (persists between builds)
+mkdir -p ./bin
 
-# Download Stockfish Linux binary
-STOCKFISH_URL="https://github.com/official-stockfish/Stockfish/releases/download/sf_16.1/stockfish-ubuntu-x86-64-avx2.tar"
+# Download Stockfish Linux binary (non-AVX2 version for compatibility)
+echo "Downloading Stockfish..."
+curl -L "https://github.com/official-stockfish/Stockfish/releases/download/sf_16.1/stockfish-ubuntu-x86-64.tar" -o stockfish.tar
 
-curl -L $STOCKFISH_URL -o stockfish.tar
+echo "Extracting..."
 tar -xvf stockfish.tar
 
-# Find and move the stockfish binary (handles different archive structures)
-find . -name "stockfish*" -type f -executable -exec mv {} $HOME/bin/stockfish \; 2>/dev/null || \
-find . -name "stockfish*" -type f ! -name "*.tar" -exec mv {} $HOME/bin/stockfish \; 2>/dev/null || \
-mv stockfish-ubuntu-x86-64-avx2/stockfish-ubuntu-x86-64-avx2 $HOME/bin/stockfish 2>/dev/null || \
-mv stockfish-ubuntu-x86-64-avx2/stockfish $HOME/bin/stockfish 2>/dev/null || \
-mv stockfish $HOME/bin/stockfish 2>/dev/null
+echo "Contents after extraction:"
+ls -la
+ls -la stockfish-ubuntu-x86-64/ || true
 
+# Move the binary
+cp stockfish-ubuntu-x86-64/stockfish-ubuntu-x86-64 ./bin/stockfish
+chmod +x ./bin/stockfish
+
+# Also copy to home bin
+mkdir -p $HOME/bin
+cp ./bin/stockfish $HOME/bin/stockfish
 chmod +x $HOME/bin/stockfish
 
 # Cleanup
-rm -rf stockfish.tar stockfish-*
+rm -rf stockfish.tar stockfish-ubuntu-x86-64
 
-echo "Stockfish installed at $HOME/bin/stockfish"
+echo "=== Stockfish Installation Complete ==="
+echo "Checking ./bin/stockfish:"
+ls -la ./bin/
+echo "Checking ~/bin/stockfish:"
 ls -la $HOME/bin/
+
+# Test stockfish
+echo "Testing Stockfish..."
+./bin/stockfish quit || echo "Stockfish test completed"
 

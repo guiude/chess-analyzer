@@ -2011,7 +2011,8 @@
                         deeperLabel.textContent = deeperText;
                     }
                     
-                    console.log(`Server: ${settings.memory_mb}MB RAM → depth ${settings.default_depth}/${settings.max_depth}`);
+                    const modeLabel = settings.cloud_mode ? '☁️ Cloud mode (limited)' : '🖥️ Local mode';
+                    console.log(`${modeLabel}: ${settings.memory_mb}MB RAM → depth ${settings.default_depth}/${settings.max_depth}, hash ${settings.hash}MB, ${settings.threads} thread(s)`);
                 }
             } catch (e) {
                 console.log('Using default depth settings');

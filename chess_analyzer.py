@@ -9,24 +9,65 @@ import os
 from typing import Optional, Tuple, List, Dict, Any
 
 def get_memory_mb() -> int:
-    """Get available system memory in MB."""
+    """Get available system memory in MB, accounting for container limits."""
+    
+    # Check for container memory limit first (cgroups v1 and v2)
+    cgroup_paths = [
+        '/sys/fs/cgroup/memory/memory.limit_in_bytes',  # cgroups v1
+        '/sys/fs/cgroup/memory.max',  # cgroups v2
+    ]
+    
+    for cgroup_path in cgroup_paths:
+        try:
+            with open(cgroup_path, 'r') as f:
+                limit = f.read().strip()
+                if limit != 'max' and limit.isdigit():
+                    limit_mb = int(limit) // (1024 * 1024)
+                    # Only use if it's a reasonable limit (not unlimited)
+                    if limit_mb < 64000:  # Less than 64GB = real limit
+                        return limit_mb
+        except:
+            pass
+    
+    # Fallback to psutil
     try:
         import psutil
         return psutil.virtual_memory().total // (1024 * 1024)
     except ImportError:
-        # Fallback: try to read from /proc/meminfo (Linux)
-        try:
-            with open('/proc/meminfo', 'r') as f:
-                for line in f:
-                    if line.startswith('MemTotal:'):
-                        return int(line.split()[1]) // 1024  # Convert KB to MB
-        except:
-            pass
-        # Default assumption: limited environment
-        return 512
+        pass
+    
+    # Final fallback
+    return 512
+
+def is_cloud_environment() -> bool:
+    """Detect if running in a cloud/container environment."""
+    cloud_indicators = [
+        'RENDER',           # Render.com
+        'RAILWAY_ENVIRONMENT',  # Railway
+        'HEROKU',           # Heroku
+        'DYNO',             # Heroku
+        'FLY_APP_NAME',     # Fly.io
+        'VERCEL',           # Vercel
+        'AWS_LAMBDA_FUNCTION_NAME',  # AWS Lambda
+        'GOOGLE_CLOUD_PROJECT',  # Google Cloud
+    ]
+    return any(os.environ.get(var) for var in cloud_indicators)
 
 def get_optimal_settings() -> dict:
     """Get optimal Stockfish settings based on available memory."""
+    
+    # Force conservative settings on known cloud platforms
+    if is_cloud_environment():
+        print("Cloud environment detected - using conservative memory settings")
+        return {
+            "hash": 16,
+            "threads": 1,
+            "max_depth": 20,
+            "default_depth": 16,
+            "memory_mb": 512,
+            "cloud_mode": True
+        }
+    
     memory_mb = get_memory_mb()
     
     if memory_mb >= 8000:  # 8GB+ (good desktop/laptop)
@@ -34,28 +75,36 @@ def get_optimal_settings() -> dict:
             "hash": 256,
             "threads": 4,
             "max_depth": 30,
-            "default_depth": 22
+            "default_depth": 22,
+            "memory_mb": memory_mb,
+            "cloud_mode": False
         }
     elif memory_mb >= 4000:  # 4GB+ (modest machine)
         return {
             "hash": 128,
             "threads": 2,
             "max_depth": 25,
-            "default_depth": 20
+            "default_depth": 20,
+            "memory_mb": memory_mb,
+            "cloud_mode": False
         }
     elif memory_mb >= 1000:  # 1GB+ (limited VPS)
         return {
             "hash": 64,
             "threads": 1,
             "max_depth": 22,
-            "default_depth": 18
+            "default_depth": 18,
+            "memory_mb": memory_mb,
+            "cloud_mode": False
         }
     else:  # <1GB (Render free tier, etc.)
         return {
             "hash": 16,
             "threads": 1,
             "max_depth": 20,
-            "default_depth": 16
+            "default_depth": 16,
+            "memory_mb": memory_mb,
+            "cloud_mode": False
         }
 
 # Get settings at module load

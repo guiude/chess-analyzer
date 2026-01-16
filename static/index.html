@@ -1,0 +1,3017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chess Position Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d0d0d;
+            --bg-secondary: #161616;
+            --bg-tertiary: #1f1f1f;
+            --bg-card: #1a1a1a;
+            --border-subtle: #2a2a2a;
+            --border-accent: #3d3d3d;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666;
+            --accent-gold: #c9a227;
+            --accent-gold-dim: #8b7118;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
+            --accent-blue: #60a5fa;
+            --square-light: #f0d9b5;
+            --square-dark: #b58863;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            /* Safe area for notched devices */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        body {
+            font-family: 'Crimson Pro', Georgia, serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(201, 162, 39, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(201, 162, 39, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+        
+        .language-selector {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--bg-secondary);
+            padding: 3px;
+            border-radius: 6px;
+        }
+        
+        .lang-btn {
+            padding: 0.4rem 0.75rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .lang-btn:hover {
+            color: var(--text-secondary);
+        }
+        
+        .lang-btn.active {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+        }
+
+        h1 {
+            font-size: 2.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.15rem;
+            font-weight: 400;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.75rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-accent);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 1.25rem;
+            background: var(--accent-gold);
+            border-radius: 2px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .beta-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            margin-left: 0.25rem;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
+        .screenshot-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        
+        .screenshot-turn-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .screenshot-turn-selector label {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .screenshot-turn-selector select {
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 16px; /* Prevents zoom on iOS */
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            padding-right: 2rem;
+        }
+
+        .screenshot-turn-selector select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fen-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .fen-input-group label {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .fen-input {
+            width: 100%;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px; /* Prevents zoom on iOS */
+            transition: border-color 0.2s ease;
+            -webkit-appearance: none;
+        }
+
+        .fen-input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .fen-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-accent);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-secondary);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-gold);
+            background: rgba(201, 162, 39, 0.05);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent-gold);
+            background: rgba(201, 162, 39, 0.1);
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .image-preview {
+            display: none;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .remove-image {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .remove-image:hover {
+            transform: scale(1.1);
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            min-height: 48px; /* Touch-friendly tap target */
+            background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(201, 162, 39, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .analyze-btn.loading {
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .results-placeholder {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .results-placeholder .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        /* Chess Board - Improved Design */
+        .board-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .board-frame {
+            background: #2a2016;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .board-with-coordinates {
+            display: grid;
+            grid-template-columns: 20px 320px;
+            grid-template-rows: 320px 20px;
+            gap: 0;
+        }
+
+        .rank-labels {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: #a89070;
+            padding-right: 4px;
+        }
+
+        .rank-labels span {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-labels {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: #a89070;
+            padding-top: 4px;
+            grid-column: 2;
+        }
+
+        .file-labels span {
+            width: 40px;
+            text-align: center;
+        }
+
+        .corner-spacer {
+            /* Empty corner */
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            width: 320px;
+            height: 320px;
+            border: 2px solid #1a1410;
+        }
+
+        .square {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .square.light {
+            background: var(--square-light);
+        }
+
+        .square.dark {
+            background: var(--square-dark);
+        }
+
+        .square .piece {
+            width: 85%;
+            height: 85%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .square .piece svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
+        }
+
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+        }
+
+        .turn-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--border-accent);
+        }
+
+        .turn-dot.white {
+            background: #fff;
+        }
+
+        .turn-dot.black {
+            background: #222;
+        }
+
+        /* Analysis Results */
+        .analysis-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .analysis-card h3 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .best-moves {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .move-item {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 3px solid var(--accent-gold);
+        }
+
+        .move-item.second {
+            border-left-color: #888;
+        }
+
+        .move-item.third {
+            border-left-color: #a0522d;
+        }
+
+        .move-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .move-main {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .move-rank {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            font-weight: 600;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .move-item.second .move-rank {
+            background: #888;
+        }
+
+        .move-item.third .move-rank {
+            background: #a0522d;
+        }
+
+        .move-san {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .move-eval {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-primary);
+        }
+
+        .move-eval.positive {
+            color: var(--accent-green);
+        }
+
+        .move-eval.negative {
+            color: var(--accent-red);
+        }
+
+        .move-eval.neutral {
+            color: var(--text-secondary);
+        }
+
+        /* Continuation Line */
+        .continuation-section {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .continuation-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .continuation-line {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .continuation-move {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .continuation-move.white-move {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .continuation-move.black-move {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-secondary);
+        }
+
+        .move-number {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .continuation-arrow {
+            color: var(--text-muted);
+            margin: 0 0.25rem;
+        }
+
+        /* Explanation */
+        .explanation {
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .explanation p {
+            margin-bottom: 1rem;
+        }
+
+        .explanation strong {
+            color: var(--text-primary);
+        }
+
+        .explanation code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .error-message {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1rem;
+            color: var(--accent-red);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Position Correction UI */
+        .correction-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-gold);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .correction-panel h4 {
+            color: var(--accent-gold);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .correction-panel h4::before {
+            content: '⚠️';
+        }
+
+        .detected-fen-group {
+            margin-bottom: 1rem;
+        }
+
+        .detected-fen-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .detected-fen-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .detected-fen-input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .correction-text-group {
+            margin-bottom: 1rem;
+        }
+
+        .correction-text-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .correction-text-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .correction-text-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .correction-text-input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .correction-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .correction-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .correction-btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .correction-btn.primary {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        .correction-btn.primary:hover {
+            background: var(--accent-gold-dim);
+        }
+
+        .correction-btn.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .correction-btn.secondary:hover {
+            border-color: var(--border-accent);
+            color: var(--text-primary);
+        }
+
+        .correction-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Manual Entry Styles */
+        .manual-entry-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .manual-hint {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .piece-entry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .piece-entry-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .piece-entry-group h4 {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .white-pieces h4 {
+            color: #fff;
+        }
+
+        .black-pieces h4 {
+            color: #888;
+        }
+
+        .piece-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .piece-entry label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-width: 90px;
+        }
+
+        .piece-icon {
+            font-size: 1.1rem;
+        }
+
+        .piece-entry input {
+            flex: 1;
+            padding: 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px; /* Prevents zoom on iOS */
+            -webkit-appearance: none;
+        }
+
+        .piece-entry input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .piece-entry input::placeholder {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .turn-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding-top: 0.5rem;
+        }
+
+        .turn-selector label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .turn-selector select {
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 16px; /* Prevents zoom on iOS */
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            padding-right: 2rem;
+        }
+
+        .turn-selector select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .generated-fen {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .generated-fen label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .generated-fen input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--accent-gold);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .small-btn {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-accent);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .small-btn:hover {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            border-color: var(--accent-gold);
+        }
+
+        /* Verification UI */
+        .verification-prompt {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-accent);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .verification-prompt h3 {
+            font-size: 1.1rem;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .verification-prompt p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .verification-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .verification-actions .correction-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.85rem 1rem;
+        }
+
+        /* Side-by-side comparison */
+        .comparison-container {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Mobile tap-to-toggle comparison - hidden on desktop */
+        .mobile-comparison {
+            display: none;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .mobile-comparison-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .mobile-board-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .mobile-board-container:active {
+            transform: scale(0.98);
+        }
+        
+        .mobile-board-view {
+            display: none;
+        }
+        
+        .mobile-board-view.active {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+        
+        .mobile-board-view .original-image {
+            max-width: min(320px, calc(100vw - 40px));
+            max-height: min(320px, calc(100vw - 40px));
+            border-radius: 4px;
+        }
+        
+        .mobile-view-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+        }
+        
+        .mobile-view-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .mobile-view-label:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .mobile-view-label.active {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+        }
+        
+        .mobile-view-label.active:hover {
+            background: var(--accent-gold);
+        }
+        
+        .mobile-view-dots {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .mobile-view-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-subtle);
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-view-dot.active {
+            background: var(--accent-gold);
+            transform: scale(1.2);
+        }
+        
+        /* Mobile: Show tap-to-toggle, hide side-by-side */
+        @media (max-width: 800px) {
+            .comparison-container {
+                display: none !important;
+            }
+            
+            .mobile-comparison {
+                display: block !important;
+            }
+        }
+
+        .comparison-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .comparison-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .comparison-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--accent-gold);
+            padding: 0 0.5rem;
+            margin-top: 2rem;
+        }
+
+        .original-image-container {
+            background: var(--bg-secondary);
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .original-image {
+            max-width: 340px;
+            max-height: 340px;
+            width: auto;
+            height: auto;
+            display: block;
+            border-radius: 2px;
+        }
+
+        .turn-selector-verification {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .turn-selector-verification label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .turn-selector-verification select {
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .turn-selector-verification select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        /* Inline Editor Styles */
+        .inline-editor {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* Mobile: Collapsible editor */
+        .mobile-edit-toggle {
+            display: none;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-accent);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-edit-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .mobile-edit-toggle .toggle-icon {
+            margin-left: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+        
+        .mobile-edit-toggle.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        @media (max-width: 640px) {
+            .mobile-edit-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+            
+            .inline-editor {
+                display: none;
+                animation: slideDown 0.3s ease;
+            }
+            
+            .inline-editor.mobile-expanded {
+                display: block;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        }
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .editor-header h4 {
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .turn-selector-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .turn-selector-inline label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .turn-selector-inline select {
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-accent);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 16px; /* Prevents zoom on iOS */
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            padding-right: 2rem;
+        }
+
+        .inline-piece-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .inline-piece-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
+        .inline-piece-column {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .column-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.3rem 0.5rem;
+            border-radius: 3px;
+            margin-bottom: 0.25rem;
+        }
+
+        .white-header {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .black-header {
+            background: rgba(0, 0, 0, 0.3);
+            color: #888;
+        }
+
+        .inline-piece-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .piece-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-width: 75px;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .inline-piece-input {
+            flex: 1;
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px; /* Prevents zoom on iOS */
+            -webkit-appearance: none;
+        }
+
+        .inline-piece-input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+            background: var(--bg-primary);
+        }
+
+        .inline-piece-input::placeholder {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .correction-btn.large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-gold);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 0.75rem;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            .subtitle {
+                font-size: 0.95rem;
+            }
+
+            .card {
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            
+            .card-title {
+                font-size: 1.1rem;
+            }
+            
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .tab-btn {
+                padding: 0.6rem 0.5rem;
+                font-size: 0.9rem;
+                flex: 1 1 auto;
+                min-width: 80px;
+            }
+
+            .board-with-coordinates {
+                grid-template-columns: 16px min(280px, calc(100vw - 80px));
+                grid-template-rows: min(280px, calc(100vw - 80px)) 16px;
+            }
+
+            .chess-board {
+                width: min(280px, calc(100vw - 80px));
+                height: min(280px, calc(100vw - 80px));
+            }
+
+            .square {
+                width: calc(min(280px, calc(100vw - 80px)) / 8);
+                height: calc(min(280px, calc(100vw - 80px)) / 8);
+            }
+
+            .rank-labels span {
+                height: calc(min(280px, calc(100vw - 80px)) / 8);
+                font-size: 0.6rem;
+            }
+
+            .file-labels span {
+                width: calc(min(280px, calc(100vw - 80px)) / 8);
+                font-size: 0.6rem;
+            }
+            
+            .original-image {
+                max-width: min(280px, calc(100vw - 60px));
+                max-height: min(280px, calc(100vw - 60px));
+            }
+            
+            .inline-piece-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .inline-piece-entry {
+                flex-wrap: wrap;
+            }
+            
+            .piece-label {
+                min-width: 70px;
+                font-size: 0.8rem;
+            }
+            
+            .inline-piece-input {
+                font-size: 16px;
+                padding: 0.5rem;
+            }
+            
+            .verification-actions {
+                flex-direction: column;
+            }
+            
+            .verification-actions .correction-btn {
+                min-width: 100%;
+            }
+            
+            .move-item {
+                padding: 0.75rem;
+            }
+            
+            .move-san {
+                font-size: 1.1rem;
+            }
+            
+            .continuation-move {
+                font-size: 0.8rem;
+            }
+            
+            .analyze-btn {
+                padding: 0.9rem 1.5rem;
+                font-size: 1rem;
+            }
+            
+            .editor-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+        
+        @media (max-width: 380px) {
+            h1 {
+                font-size: 1.4rem;
+            }
+            
+            .board-with-coordinates {
+                grid-template-columns: 14px calc(100vw - 50px);
+                grid-template-rows: calc(100vw - 50px) 14px;
+            }
+
+            .chess-board {
+                width: calc(100vw - 50px);
+                height: calc(100vw - 50px);
+            }
+
+            .square {
+                width: calc((100vw - 50px) / 8);
+                height: calc((100vw - 50px) / 8);
+            }
+
+            .rank-labels span {
+                height: calc((100vw - 50px) / 8);
+            }
+
+            .file-labels span {
+                width: calc((100vw - 50px) / 8);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="language-selector">
+                    <button class="lang-btn active" data-lang="en">EN</button>
+                    <button class="lang-btn" data-lang="pt">PT</button>
+                </div>
+            </div>
+            <h1>♔ <span data-i18n="title">Chess Position Analyzer</span></h1>
+            <p class="subtitle" data-i18n="subtitle">Upload a screenshot or enter FEN • Get AI-powered move explanations</p>
+        </header>
+
+        <main class="main-grid">
+            <section class="input-section">
+                <div class="card">
+                    <h2 class="card-title" data-i18n="positionInput">Position Input</h2>
+                    
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="fen" data-i18n="fenCode">FEN Code</button>
+                        <button class="tab-btn" data-tab="image"><span data-i18n="screenshot">Screenshot</span> <span class="beta-badge">β</span></button>
+                        <button class="tab-btn" data-tab="manual" data-i18n="manualEntry">Manual Entry</button>
+                    </div>
+
+                    <div class="tab-content active" id="tab-fen">
+                        <div class="fen-input-group">
+                            <label for="fenInput" data-i18n="enterFen">Enter FEN notation</label>
+                            <input 
+                                type="text" 
+                                id="fenInput" 
+                                class="fen-input"
+                                placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                            >
+                            <small style="color: var(--text-muted);" data-i18n="fenHint">Paste a FEN string from your chess game</small>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="tab-image">
+                        <div 
+                            class="upload-zone" 
+                            id="uploadZone"
+                            onclick="document.getElementById('imageInput').click()"
+                        >
+                            <div class="upload-icon">📷</div>
+                            <p class="upload-text" data-i18n="dropScreenshot">Drop a chess board screenshot here</p>
+                            <p class="upload-hint" data-i18n="uploadHint">or click to browse • Ctrl+V to paste • PNG, JPG, WebP</p>
+                            <input type="file" id="imageInput" accept="image/*" hidden>
+                        </div>
+                        <div class="image-preview" id="imagePreview">
+                            <img id="previewImg" src="" alt="Preview">
+                            <button class="remove-image" onclick="removeImage()">×</button>
+                        </div>
+                        <div class="screenshot-options">
+                            <div class="screenshot-turn-selector">
+                                <label data-i18n="turnToMove">Turn to move:</label>
+                                <select id="screenshotTurnSelect">
+                                    <option value="w" data-i18n="white">White</option>
+                                    <option value="b" data-i18n="black">Black</option>
+                                </select>
+                            </div>
+                            <div class="screenshot-turn-selector">
+                                <label data-i18n="boardOrientation">Board orientation:</label>
+                                <select id="screenshotOrientationSelect">
+                                    <option value="white" data-i18n="whiteAtBottom">White at bottom</option>
+                                    <option value="black" data-i18n="blackAtBottom">Black at bottom</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="tab-manual">
+                        <div class="manual-entry-section">
+                            <p class="manual-hint" data-i18n="manualHint">Enter piece positions (e.g., "e1" for a piece on e1). Leave empty for no piece of that type.</p>
+                            
+                            <div class="piece-entry-grid">
+                                <div class="piece-entry-group white-pieces">
+                                    <h4 data-i18n="whitePieces">White Pieces</h4>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♔</span> <span data-i18n="king">King:</span></label>
+                                        <input type="text" id="wK" placeholder="e.g., e1" maxlength="2">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♕</span> <span data-i18n="queen">Queen:</span></label>
+                                        <input type="text" id="wQ" placeholder="e.g., d1" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♖</span> <span data-i18n="rooks">Rooks:</span></label>
+                                        <input type="text" id="wR" placeholder="e.g., a1, h1" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♗</span> <span data-i18n="bishops">Bishops:</span></label>
+                                        <input type="text" id="wB" placeholder="e.g., c1, f1" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♘</span> <span data-i18n="knights">Knights:</span></label>
+                                        <input type="text" id="wN" placeholder="e.g., b1, g1" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♙</span> <span data-i18n="pawns">Pawns:</span></label>
+                                        <input type="text" id="wP" placeholder="e.g., a2, b2, c2" maxlength="40">
+                                    </div>
+                                </div>
+                                
+                                <div class="piece-entry-group black-pieces">
+                                    <h4 data-i18n="blackPieces">Black Pieces</h4>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♚</span> <span data-i18n="king">King:</span></label>
+                                        <input type="text" id="bK" placeholder="e.g., e8" maxlength="2">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♛</span> <span data-i18n="queen">Queen:</span></label>
+                                        <input type="text" id="bQ" placeholder="e.g., d8" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♜</span> <span data-i18n="rooks">Rooks:</span></label>
+                                        <input type="text" id="bR" placeholder="e.g., a8, h8" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♝</span> <span data-i18n="bishops">Bishops:</span></label>
+                                        <input type="text" id="bB" placeholder="e.g., c8, f8" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♞</span> <span data-i18n="knights">Knights:</span></label>
+                                        <input type="text" id="bN" placeholder="e.g., b8, g8" maxlength="20">
+                                    </div>
+                                    <div class="piece-entry">
+                                        <label><span class="piece-icon">♟</span> <span data-i18n="pawns">Pawns:</span></label>
+                                        <input type="text" id="bP" placeholder="e.g., a7, b7, c7" maxlength="40">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="turn-selector">
+                                <label data-i18n="turnToMove">Turn to move:</label>
+                                <select id="turnSelect">
+                                    <option value="w" data-i18n="white">White</option>
+                                    <option value="b" data-i18n="black">Black</option>
+                                </select>
+                            </div>
+                            
+                            <div class="generated-fen">
+                                <label data-i18n="generatedFen">Generated FEN:</label>
+                                <input type="text" id="generatedFen" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title" data-i18n="analysisSettings">Analysis Settings</h2>
+                    <div class="fen-input-group">
+                        <label for="depthInput" data-i18n="analysisDepth">Analysis Depth</label>
+                        <input type="range" id="depthInput" min="10" max="30" value="20" style="width: 100%;">
+                        <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.85rem;">
+                            <span data-i18n="faster">Faster (10)</span>
+                            <span id="depthValue">20</span>
+                            <span data-i18n="deeper">Deeper (30)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzePosition()">
+                    <span data-i18n="analyzePosition">Analyze Position</span>
+                </button>
+            </section>
+
+            <section class="results-section">
+                <div class="card" id="resultsCard">
+                    <h2 class="card-title" data-i18n="analysisResults">Analysis Results</h2>
+                    <div class="results-placeholder" id="placeholder">
+                        <div class="icon">♟</div>
+                        <p data-i18n="enterPosition">Enter a position to see the analysis</p>
+                    </div>
+                    <div id="resultsContent" style="display: none;">
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p data-i18n="footer">Powered by <a href="https://stockfishchess.org/" target="_blank">Stockfish</a> chess engine • Built with Flask & Python</p>
+        </footer>
+    </div>
+
+    <script>
+        // Internationalization
+        const translations = {
+            en: {
+                title: "Chess Position Analyzer",
+                subtitle: "Upload a screenshot or enter FEN • Get AI-powered move explanations",
+                positionInput: "Position Input",
+                fenCode: "FEN Code",
+                screenshot: "Screenshot",
+                manualEntry: "Manual Entry",
+                enterFen: "Enter FEN notation",
+                fenHint: "Paste a FEN string from your chess game",
+                dropScreenshot: "Drop a chess board screenshot here",
+                uploadHint: "or click to browse • Ctrl+V to paste • PNG, JPG, WebP",
+                boardOrientation: "Board orientation:",
+                whiteAtBottom: "White at bottom",
+                blackAtBottom: "Black at bottom",
+                turnToMove: "Turn to move:",
+                white: "White",
+                black: "Black",
+                analysisSettings: "Analysis Settings",
+                analysisDepth: "Analysis Depth",
+                faster: "Faster (10)",
+                deeper: "Deeper (30)",
+                analyzePosition: "Analyze Position",
+                analysisResults: "Analysis Results",
+                enterPosition: "Enter a position to see the analysis",
+                footer: 'Powered by <a href="https://stockfishchess.org/" target="_blank">Stockfish</a> chess engine • Built with Flask & Python',
+                verifyTitle: "📷 Verify & Edit Position",
+                verifyDesc: "Compare your screenshot with the AI interpretation. Edit any incorrect pieces below - the board updates live.",
+                yourScreenshot: "Your Screenshot",
+                detectedPosition: "Detected Position (editable)",
+                editPieces: "Edit Piece Positions",
+                turn: "Turn:",
+                whiteToMove: "White to move",
+                blackToMove: "Black to move",
+                analyzeThis: "✓ Analyze This Position",
+                editPositionMobile: "Edit Position",
+                hideEditor: "Hide Editor",
+                tapToCompare: "👆 Tap to compare",
+                detectedShort: "AI Result",
+                recognizing: "Recognizing position...",
+                analyzing: "Analyzing...",
+                bestMoves: "Best Moves",
+                positionAnalysis: "Position Analysis",
+                depth: "Depth",
+                whiteKing: "King", whiteQueen: "Queen", whiteRooks: "Rooks", 
+                whiteBishops: "Bishops", whiteKnights: "Knights", whitePawns: "Pawns",
+                blackKing: "King", blackQueen: "Queen", blackRooks: "Rooks",
+                blackBishops: "Bishops", blackKnights: "Knights", blackPawns: "Pawns",
+                generatedFen: "Generated FEN:",
+                errorNoFen: "Please enter a FEN string",
+                errorNoPieces: "Please enter at least one piece position",
+                errorNoImage: "Please upload a chess board screenshot",
+                errorAnalysis: "Failed to analyze position. Please try again.",
+                errorRecognition: "Failed to recognize position. Try using Manual Entry instead.",
+                toMove: "to move",
+                manualHint: 'Enter piece positions (e.g., "e1" for a piece on e1). Leave empty for no piece of that type.',
+                whitePieces: "White Pieces",
+                blackPieces: "Black Pieces",
+                king: "King:",
+                queen: "Queen:",
+                rooks: "Rooks:",
+                bishops: "Bishops:",
+                knights: "Knights:",
+                pawns: "Pawns:"
+            },
+            pt: {
+                title: "Analisador de Posições de Xadrez",
+                subtitle: "Envie uma captura de tela ou insira FEN • Receba explicações dos lances",
+                positionInput: "Entrada da Posição",
+                fenCode: "Código FEN",
+                screenshot: "Captura de Tela",
+                manualEntry: "Entrada Manual",
+                enterFen: "Insira a notação FEN",
+                fenHint: "Cole uma string FEN do seu jogo de xadrez",
+                dropScreenshot: "Solte uma captura de tela do tabuleiro aqui",
+                uploadHint: "ou clique para procurar • Ctrl+V para colar • PNG, JPG, WebP",
+                boardOrientation: "Orientação do tabuleiro:",
+                whiteAtBottom: "Brancas embaixo",
+                blackAtBottom: "Pretas embaixo",
+                turnToMove: "Vez de jogar:",
+                white: "Brancas",
+                black: "Pretas",
+                analysisSettings: "Configurações da Análise",
+                analysisDepth: "Profundidade da Análise",
+                faster: "Mais rápido (10)",
+                deeper: "Mais profundo (30)",
+                analyzePosition: "Analisar Posição",
+                analysisResults: "Resultados da Análise",
+                enterPosition: "Insira uma posição para ver a análise",
+                footer: 'Desenvolvido com <a href="https://stockfishchess.org/" target="_blank">Stockfish</a> • Construído com Flask & Python',
+                verifyTitle: "📷 Verificar e Editar Posição",
+                verifyDesc: "Compare sua captura de tela com a interpretação da IA. Edite as peças incorretas abaixo - o tabuleiro atualiza em tempo real.",
+                yourScreenshot: "Sua Captura de Tela",
+                detectedPosition: "Posição Detectada (editável)",
+                editPieces: "Editar Posições das Peças",
+                turn: "Vez:",
+                whiteToMove: "Brancas jogam",
+                blackToMove: "Pretas jogam",
+                analyzeThis: "✓ Analisar Esta Posição",
+                editPositionMobile: "Editar Posição",
+                hideEditor: "Ocultar Editor",
+                tapToCompare: "👆 Toque para comparar",
+                detectedShort: "Resultado IA",
+                recognizing: "Reconhecendo posição...",
+                analyzing: "Analisando...",
+                bestMoves: "Melhores Lances",
+                positionAnalysis: "Análise da Posição",
+                depth: "Profundidade",
+                whiteKing: "Rei", whiteQueen: "Dama", whiteRooks: "Torres",
+                whiteBishops: "Bispos", whiteKnights: "Cavalos", whitePawns: "Peões",
+                blackKing: "Rei", blackQueen: "Dama", blackRooks: "Torres",
+                blackBishops: "Bispos", blackKnights: "Cavalos", blackPawns: "Peões",
+                generatedFen: "FEN gerado:",
+                errorNoFen: "Por favor, insira uma string FEN",
+                errorNoPieces: "Por favor, insira pelo menos uma posição de peça",
+                errorNoImage: "Por favor, envie uma captura de tela do tabuleiro",
+                errorAnalysis: "Falha ao analisar posição. Tente novamente.",
+                errorRecognition: "Falha ao reconhecer posição. Tente usar a Entrada Manual.",
+                toMove: "joga",
+                manualHint: 'Insira posições das peças (ex: "e1" para uma peça em e1). Deixe vazio se não houver peça daquele tipo.',
+                whitePieces: "Peças Brancas",
+                blackPieces: "Peças Pretas",
+                king: "Rei:",
+                queen: "Dama:",
+                rooks: "Torres:",
+                bishops: "Bispos:",
+                knights: "Cavalos:",
+                pawns: "Peões:"
+            }
+        };
+        
+        let currentLang = localStorage.getItem('chess-analyzer-lang') || 'en';
+        
+        function t(key) {
+            return translations[currentLang][key] || translations['en'][key] || key;
+        }
+        
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('chess-analyzer-lang', lang);
+            
+            // Update language buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            
+            // Update all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (translations[lang][key]) {
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.placeholder = translations[lang][key];
+                    } else {
+                        el.innerHTML = translations[lang][key];
+                    }
+                }
+            });
+        }
+        
+        // Initialize language on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setLanguage(currentLang);
+            
+            // Language button click handlers
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+            });
+        });
+
+        // SVG Chess Pieces (standard Cburnett design)
+        const PIECE_SVGS = {
+            // White pieces
+            'K': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linejoin="miter" d="M22.5 11.63V6M20 8h5"/><path fill="#fff" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="#fff" d="M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7"/><path d="M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0"/></g></svg>`,
+            'Q': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zm16.5-4.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM16 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM33 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0z"/><path stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15L14 11v14L7 14z"/><path stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0"/></g></svg>`,
+            'R': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linecap="butt" d="M9 39h27v-3H9zm3-3v-4h21v4zm-1-22V9h4v2h5V9h5v2h5V9h4v5"/><path d="M34 14l-3 3H14l-3-3"/><path stroke-linecap="butt" stroke-linejoin="miter" d="M31 17v12.5H14V17"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path fill="none" stroke-linejoin="miter" d="M11 14h23"/></g></svg>`,
+            'B': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g fill="#fff" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
+            'N': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#fff" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="#fff" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3"/><path fill="#000" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0zm5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5z"/></g></svg>`,
+            'P': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-linecap="round" stroke-width="1.5"/></svg>`,
+            // Black pieces
+            'k': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linejoin="miter" d="M22.5 11.63V6"/><path fill="#000" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="#000" d="M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7"/><path stroke-linejoin="miter" d="M20 8h5"/><path stroke="#fff" d="M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0"/></g></svg>`,
+            'q': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g stroke="none"><circle cx="6" cy="12" r="2.75"/><circle cx="14" cy="9" r="2.75"/><circle cx="22.5" cy="8" r="2.75"/><circle cx="31" cy="9" r="2.75"/><circle cx="39" cy="12" r="2.75"/></g><path fill="#000" stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5z"/><path fill="#000" stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" stroke="#fff" d="M11.5 30c3.5-1 18.5-1 22 0m-21 3c4-1 17-1 21 0m-21 3c4-1 17-1 21 0"/></g></svg>`,
+            'r': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#000" stroke-linecap="butt" d="M9 39h27v-3H9zm3.5-7l1.5-2.5h17l1.5 2.5zm-.5 4v-4h21v4z"/><path fill="#000" stroke-linecap="butt" stroke-linejoin="miter" d="M14 29.5v-13h17v13z"/><path fill="#000" stroke-linecap="butt" d="M14 16.5L11 14h23l-3 2.5z"/><path fill="#000" stroke-linecap="butt" stroke-linejoin="miter" d="M11 14V9h4v2h5V9h5v2h5V9h4v5z"/><path fill="none" stroke="#fff" stroke-linejoin="miter" stroke-width="1" d="M12 35.5h21m-20-4h19m-18-2h17m-17-13h17M11 14h23"/></g></svg>`,
+            'b': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g fill="#000" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path stroke="#fff" stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
+            'n': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#000" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="#000" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3"/><path fill="#fff" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0zm5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5z"/><path fill="#fff" stroke="#fff" stroke-width="1.5" d="M24.55 10.4l-.45 1.45.5.15c3.15 1 5.65 2.49 7.9 6.75S35.75 29.06 35.25 39l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34-2.37-4.49-5.79-6.64-9.19-7.16l-.51-.1z"/></g></svg>`,
+            'p': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#000" stroke="#000" stroke-linecap="round" stroke-width="1.5"/></svg>`
+        };
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            });
+        });
+
+        // Depth slider
+        const depthInput = document.getElementById('depthInput');
+        const depthValue = document.getElementById('depthValue');
+        depthInput.addEventListener('input', () => {
+            depthValue.textContent = depthInput.value;
+        });
+
+        // Image upload handling
+        const uploadZone = document.getElementById('uploadZone');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+
+        let uploadedImage = null;
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImage(file);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleImage(e.target.files[0]);
+            }
+        });
+        
+        // Clipboard paste support
+        document.addEventListener('paste', (e) => {
+            // Only handle paste when on the image tab
+            const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+            if (activeTab !== 'image') return;
+            
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        handleImage(file);
+                        // Show a brief visual feedback
+                        uploadZone.classList.add('dragover');
+                        setTimeout(() => uploadZone.classList.remove('dragover'), 300);
+                    }
+                    break;
+                }
+            }
+        });
+
+        function handleImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = e.target.result;
+                previewImg.src = uploadedImage;
+                imagePreview.style.display = 'block';
+                uploadZone.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage() {
+            uploadedImage = null;
+            imagePreview.style.display = 'none';
+            uploadZone.style.display = 'block';
+            imageInput.value = '';
+        }
+
+        async function analyzePosition() {
+            const btn = document.getElementById('analyzeBtn');
+            const fenInput = document.getElementById('fenInput');
+            const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+            
+            const data = {
+                depth: parseInt(depthInput.value),
+                num_moves: 3
+            };
+
+            if (activeTab === 'fen') {
+                if (!fenInput.value.trim()) {
+                    showError(t('errorNoFen'));
+                    return;
+                }
+                data.fen = fenInput.value.trim();
+                // FEN input: flip board based on whose turn it is
+                // FEN format: "position turn castling en-passant halfmove fullmove"
+                const fenParts = data.fen.split(' ');
+                const turn = fenParts[1] || 'w';
+                window.boardFlipped = (turn === 'b'); // Flip if Black to move
+            } else if (activeTab === 'manual') {
+                // Generate FEN from manual entries
+                const generatedFen = generateFenFromPieces();
+                if (!generatedFen || generatedFen.startsWith('8/8/8/8/8/8/8/8')) {
+                    showError(t('errorNoPieces'));
+                    return;
+                }
+                data.fen = generatedFen;
+                // Manual entry: flip based on selected turn
+                const manualTurn = document.getElementById('turnSelect').value;
+                window.boardFlipped = (manualTurn === 'b'); // Flip if Black to move
+            } else {
+                // Screenshot mode - use separate recognition flow
+                if (!uploadedImage) {
+                    showError(t('errorNoImage'));
+                    return;
+                }
+                
+                btn.classList.add('loading');
+                btn.innerHTML = `<div class="spinner"></div><span>${t('recognizing')}</span>`;
+                btn.disabled = true;
+                
+                try {
+                    // First, just recognize the position (don't analyze yet)
+                    const recognizeResponse = await fetch('/api/recognize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: uploadedImage })
+                    });
+                    
+                    const recognizeResult = await recognizeResponse.json();
+                    
+                    if (recognizeResult.error) {
+                        showError(recognizeResult.error);
+                    } else {
+                        // Apply the user-selected turn
+                        const selectedTurn = document.getElementById('screenshotTurnSelect').value;
+                        const fenParts = recognizeResult.fen.split(' ');
+                        fenParts[1] = selectedTurn;
+                        recognizeResult.fen = fenParts.join(' ');
+                        recognizeResult.turn = selectedTurn === 'w' ? 'white' : 'black';
+                        
+                        // Populate manual entry and show verification
+                        populateManualEntryFromFen(recognizeResult.fen);
+                        showImageVerificationPrompt(recognizeResult);
+                    }
+                } catch (error) {
+                    showError(t('errorRecognition'));
+                } finally {
+                    btn.classList.remove('loading');
+                    btn.innerHTML = `<span>${t('analyzePosition')}</span>`;
+                    btn.disabled = false;
+                }
+                return; // Exit here - don't proceed to analysis
+            }
+
+            btn.classList.add('loading');
+            btn.innerHTML = `<div class="spinner"></div><span>${t('analyzing')}</span>`;
+            btn.disabled = true;
+
+            try {
+                data.lang = currentLang;
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    showError(result.error);
+                } else {
+                    displayResults(result);
+                }
+            } catch (error) {
+                showError(t('errorAnalysis'));
+            } finally {
+                btn.classList.remove('loading');
+                btn.innerHTML = `<span>${t('analyzePosition')}</span>`;
+                btn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const content = document.getElementById('resultsContent');
+            const placeholder = document.getElementById('placeholder');
+            
+            placeholder.style.display = 'none';
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="error-message">
+                    <span>⚠️</span>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        function displayResults(result) {
+            const content = document.getElementById('resultsContent');
+            const placeholder = document.getElementById('placeholder');
+            
+            placeholder.style.display = 'none';
+            content.style.display = 'block';
+
+            // Use stored board orientation for consistent display
+            const flipped = window.boardFlipped || false;
+            const boardHtml = renderBoard(result.fen, flipped);
+            const movesHtml = renderMoves(result.best_moves, result.turn);
+            const explanation = formatExplanation(result.explanation);
+            
+            // Generate rank and file labels based on orientation
+            const rankLabels = flipped 
+                ? '<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>'
+                : '<span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>';
+            const fileLabels = flipped
+                ? '<span>h</span><span>g</span><span>f</span><span>e</span><span>d</span><span>c</span><span>b</span><span>a</span>'
+                : '<span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>';
+
+            content.innerHTML = `
+                <div class="board-wrapper">
+                    <div class="board-frame">
+                        <div class="board-with-coordinates">
+                            <div class="rank-labels">
+                                ${rankLabels}
+                            </div>
+                            <div class="chess-board">${boardHtml}</div>
+                            <div class="corner-spacer"></div>
+                            <div class="file-labels">
+                                ${fileLabels}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="turn-indicator">
+                        <div class="turn-dot ${result.turn}"></div>
+                        <span>${result.turn === 'white' ? t('white') : t('black')} ${t('toMove')}</span>
+                    </div>
+                </div>
+
+                <div class="analysis-card">
+                    <h3>${t('bestMoves')} (${t('depth')} ${result.analysis_depth})</h3>
+                    <div class="best-moves">${movesHtml}</div>
+                </div>
+
+                <div class="analysis-card">
+                    <h3>${t('positionAnalysis')}</h3>
+                    <div class="explanation">${explanation}</div>
+                </div>
+            `;
+
+            // Always update FEN input with the analyzed position
+            document.getElementById('fenInput').value = result.fen;
+        }
+
+
+        async function analyzeWithFen(fen) {
+            const btn = document.querySelector('.correction-btn.primary');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Analyzing...';
+            }
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fen: fen,
+                        depth: parseInt(depthInput.value),
+                        num_moves: 3
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    showError(result.error);
+                } else {
+                    displayResults(result, false); // Don't show correction panel for manual FEN
+                }
+            } catch (error) {
+                showError('Failed to analyze position. Please check the FEN is valid.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Re-analyze with Corrections';
+                }
+            }
+        }
+
+
+        function renderBoard(fen, flipped = false) {
+            const position = fen.split(' ')[0];
+            const rows = position.split('/');
+            let html = '';
+
+            // If flipped, we reverse the order of ranks and files
+            const rankOrder = flipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
+            
+            for (const rankIdx of rankOrder) {
+                const row = rows[rankIdx];
+                let squares = [];
+                
+                // Parse row into squares
+                for (const char of row) {
+                    if (/\d/.test(char)) {
+                        const emptyCount = parseInt(char);
+                        for (let i = 0; i < emptyCount; i++) {
+                            squares.push(null);
+                        }
+                    } else {
+                        squares.push(char);
+                    }
+                }
+                
+                // If flipped, reverse the order of squares in the row
+                if (flipped) {
+                    squares = squares.reverse();
+                }
+                
+                // Render the row
+                for (let file = 0; file < 8; file++) {
+                    // Calculate actual board coordinates for square color
+                    // FEN row 0 = rank 8, row 7 = rank 1
+                    // When flipped, file 0 in display = actual file h (7)
+                    const actualFile = flipped ? (7 - file) : file;
+                    const actualChessRank = 8 - rankIdx;  // Always 1-8 based on FEN row
+                    
+                    // Square color rule: a1 is dark, h1 is light
+                    // Light when (file + rank) is even
+                    const isLight = (actualFile + actualChessRank) % 2 === 0;
+                    const piece = squares[file];
+                    
+                    if (piece) {
+                        const pieceSvg = PIECE_SVGS[piece] || '';
+                        html += `<div class="square ${isLight ? 'light' : 'dark'}"><div class="piece">${pieceSvg}</div></div>`;
+                    } else {
+                        html += `<div class="square ${isLight ? 'light' : 'dark'}"></div>`;
+                    }
+                }
+            }
+
+            return html;
+        }
+
+        function renderMoves(bestMoves, turn) {
+            return bestMoves.map((move, i) => {
+                const evalClass = move.score_value > 50 ? 'positive' : move.score_value < -50 ? 'negative' : 'neutral';
+                const rankClass = i === 0 ? '' : i === 1 ? ' second' : ' third';
+                
+                // Build continuation line with proper move numbers
+                const continuationHtml = renderContinuation(move.full_line, turn);
+                
+                return `
+                    <div class="move-item${rankClass}">
+                        <div class="move-header">
+                            <div class="move-main">
+                                <div class="move-rank">${i + 1}</div>
+                                <div class="move-san">${move.move_san}</div>
+                            </div>
+                            <div class="move-eval ${evalClass}">${move.score}</div>
+                        </div>
+                        <div class="continuation-section">
+                            <div class="continuation-label">Best continuation</div>
+                            <div class="continuation-line">${continuationHtml}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderContinuation(moves, startingTurn) {
+            if (!moves || moves.length === 0) return '<span class="text-muted">No continuation available</span>';
+            
+            let html = '';
+            let isWhiteTurn = startingTurn === 'white';
+            let moveNumber = 1;
+            
+            moves.forEach((move, i) => {
+                if (isWhiteTurn) {
+                    html += `<span class="continuation-move white-move"><span class="move-number">${moveNumber}.</span> ${move}</span>`;
+                } else {
+                    if (i === 0) {
+                        html += `<span class="continuation-move black-move"><span class="move-number">${moveNumber}...</span> ${move}</span>`;
+                    } else {
+                        html += `<span class="continuation-move black-move">${move}</span>`;
+                    }
+                    moveNumber++;
+                }
+                
+                if (i < moves.length - 1) {
+                    html += '<span class="continuation-arrow">→</span>';
+                }
+                
+                isWhiteTurn = !isWhiteTurn;
+            });
+            
+            return html;
+        }
+
+        function formatExplanation(text) {
+            return text
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`(.+?)`/g, '<code>$1</code>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/^/, '<p>')
+                .replace(/$/, '</p>');
+        }
+
+        document.getElementById('fenInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzePosition();
+            }
+        });
+
+        // Populate manual entry from FEN (for screenshot verification)
+        function populateManualEntryFromFen(fen) {
+            // Clear all fields first
+            const fields = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wP', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bP'];
+            fields.forEach(id => document.getElementById(id).value = '');
+            
+            // Parse FEN
+            const parts = fen.split(' ');
+            const position = parts[0];
+            const turn = parts[1] || 'w';
+            
+            // Set turn
+            document.getElementById('turnSelect').value = turn;
+            
+            // Parse position
+            const pieceSquares = {
+                'K': [], 'Q': [], 'R': [], 'B': [], 'N': [], 'P': [],
+                'k': [], 'q': [], 'r': [], 'b': [], 'n': [], 'p': []
+            };
+            
+            const ranks = position.split('/');
+            for (let rankIdx = 0; rankIdx < 8; rankIdx++) {
+                const rank = ranks[rankIdx];
+                let fileIdx = 0;
+                
+                for (const char of rank) {
+                    if (/\d/.test(char)) {
+                        fileIdx += parseInt(char);
+                    } else {
+                        const file = String.fromCharCode('a'.charCodeAt(0) + fileIdx);
+                        const rankNum = 8 - rankIdx;
+                        const square = file + rankNum;
+                        
+                        if (pieceSquares[char] !== undefined) {
+                            pieceSquares[char].push(square);
+                        }
+                        fileIdx++;
+                    }
+                }
+            }
+            
+            // Populate fields
+            document.getElementById('wK').value = pieceSquares['K'].join(', ');
+            document.getElementById('wQ').value = pieceSquares['Q'].join(', ');
+            document.getElementById('wR').value = pieceSquares['R'].join(', ');
+            document.getElementById('wB').value = pieceSquares['B'].join(', ');
+            document.getElementById('wN').value = pieceSquares['N'].join(', ');
+            document.getElementById('wP').value = pieceSquares['P'].join(', ');
+            document.getElementById('bK').value = pieceSquares['k'].join(', ');
+            document.getElementById('bQ').value = pieceSquares['q'].join(', ');
+            document.getElementById('bR').value = pieceSquares['r'].join(', ');
+            document.getElementById('bB').value = pieceSquares['b'].join(', ');
+            document.getElementById('bN').value = pieceSquares['n'].join(', ');
+            document.getElementById('bP').value = pieceSquares['p'].join(', ');
+            
+            // Update generated FEN display
+            document.getElementById('generatedFen').value = fen;
+            document.getElementById('fenInput').value = fen;
+        }
+
+        function showImageVerificationPrompt(result) {
+            const content = document.getElementById('resultsContent');
+            const placeholder = document.getElementById('placeholder');
+            
+            placeholder.style.display = 'none';
+            content.style.display = 'block';
+            
+            // Check if board should be flipped (black at bottom)
+            const orientation = document.getElementById('screenshotOrientationSelect')?.value || 'white';
+            const flipped = orientation === 'black';
+            window.boardFlipped = flipped; // Store for live preview updates
+            
+            const boardHtml = renderBoard(result.fen, flipped);
+            
+            // Generate rank and file labels based on orientation
+            const rankLabels = flipped 
+                ? '<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>'
+                : '<span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>';
+            const fileLabels = flipped
+                ? '<span>h</span><span>g</span><span>f</span><span>e</span><span>d</span><span>c</span><span>b</span><span>a</span>'
+                : '<span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>';
+
+            content.innerHTML = `
+                <div class="verification-prompt">
+                    <h3>${t('verifyTitle')}</h3>
+                    <p>${t('verifyDesc')}</p>
+                </div>
+                
+                <!-- Desktop: Side-by-side comparison -->
+                <div class="comparison-container">
+                    <div class="comparison-side">
+                        <div class="comparison-label">${t('yourScreenshot')}</div>
+                        <div class="original-image-container">
+                            <img src="${uploadedImage}" alt="Original screenshot" class="original-image">
+                        </div>
+                    </div>
+                    
+                    <div class="comparison-divider">
+                        <span>→</span>
+                    </div>
+                    
+                    <div class="comparison-side">
+                        <div class="comparison-label">${t('detectedPosition')}</div>
+                        <div class="board-wrapper" style="margin-bottom: 0;">
+                            <div class="board-frame">
+                                <div class="board-with-coordinates">
+                                    <div class="rank-labels">
+                                        ${rankLabels}
+                                    </div>
+                                    <div class="chess-board" id="livePreviewBoard">${boardHtml}</div>
+                                    <div class="corner-spacer"></div>
+                                    <div class="file-labels">
+                                        ${fileLabels}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile: Tap-to-toggle comparison -->
+                <div class="mobile-comparison">
+                    <div class="mobile-comparison-hint">${t('tapToCompare')}</div>
+                    <div class="mobile-board-container" onclick="toggleMobileComparison()">
+                        <div class="mobile-board-view active" id="mobileViewScreenshot">
+                            <img src="${uploadedImage}" alt="Original screenshot" class="original-image">
+                        </div>
+                        <div class="mobile-board-view" id="mobileViewDetected">
+                            <div class="board-wrapper" style="margin-bottom: 0;">
+                                <div class="board-frame">
+                                    <div class="board-with-coordinates">
+                                        <div class="rank-labels">
+                                            ${rankLabels}
+                                        </div>
+                                        <div class="chess-board" id="livePreviewBoardMobile">${boardHtml}</div>
+                                        <div class="corner-spacer"></div>
+                                        <div class="file-labels">
+                                            ${fileLabels}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mobile-view-indicator">
+                        <span class="mobile-view-label active" id="labelScreenshot" onclick="setMobileComparisonView(0)">${t('yourScreenshot')}</span>
+                        <div class="mobile-view-dots">
+                            <div class="mobile-view-dot active" id="dot1"></div>
+                            <div class="mobile-view-dot" id="dot2"></div>
+                        </div>
+                        <span class="mobile-view-label" id="labelDetected" onclick="setMobileComparisonView(1)">${t('detectedShort')}</span>
+                    </div>
+                </div>
+                
+                <button class="mobile-edit-toggle" onclick="toggleMobileEditor(this)">
+                    ✏️ <span data-i18n="editPositionMobile">Edit Position</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                
+                <div class="inline-editor">
+                    <div class="editor-section">
+                        <div class="editor-header">
+                            <h4>${t('editPieces')}</h4>
+                            <div class="turn-selector-inline">
+                                <label>${t('turn')}</label>
+                                <select id="verifyTurnSelect" onchange="updateLivePreview()">
+                                    <option value="w" ${result.turn === 'white' ? 'selected' : ''}>${t('whiteToMove')}</option>
+                                    <option value="b" ${result.turn === 'black' ? 'selected' : ''}>${t('blackToMove')}</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="inline-piece-grid">
+                            <div class="inline-piece-column">
+                                <div class="column-header white-header">${t('white')}</div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♔ ${t('whiteKing')}</span>
+                                    <input type="text" id="edit_wK" class="inline-piece-input" placeholder="e1" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♕ ${t('whiteQueen')}</span>
+                                    <input type="text" id="edit_wQ" class="inline-piece-input" placeholder="d1" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♖ ${t('whiteRooks')}</span>
+                                    <input type="text" id="edit_wR" class="inline-piece-input" placeholder="a1, h1" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♗ ${t('whiteBishops')}</span>
+                                    <input type="text" id="edit_wB" class="inline-piece-input" placeholder="c1, f1" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♘ ${t('whiteKnights')}</span>
+                                    <input type="text" id="edit_wN" class="inline-piece-input" placeholder="b1, g1" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♙ ${t('whitePawns')}</span>
+                                    <input type="text" id="edit_wP" class="inline-piece-input" placeholder="a2, b2, ..." onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                            </div>
+                            
+                            <div class="inline-piece-column">
+                                <div class="column-header black-header">${t('black')}</div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♚ ${t('blackKing')}</span>
+                                    <input type="text" id="edit_bK" class="inline-piece-input" placeholder="e8" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♛ ${t('blackQueen')}</span>
+                                    <input type="text" id="edit_bQ" class="inline-piece-input" placeholder="d8" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♜ ${t('blackRooks')}</span>
+                                    <input type="text" id="edit_bR" class="inline-piece-input" placeholder="a8, h8" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♝ ${t('blackBishops')}</span>
+                                    <input type="text" id="edit_bB" class="inline-piece-input" placeholder="c8, f8" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♞ ${t('blackKnights')}</span>
+                                    <input type="text" id="edit_bN" class="inline-piece-input" placeholder="b8, g8" onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                                <div class="inline-piece-entry">
+                                    <span class="piece-label">♟ ${t('blackPawns')}</span>
+                                    <input type="text" id="edit_bP" class="inline-piece-input" placeholder="a7, b7, ..." onchange="updateLivePreview()" oninput="updateLivePreview()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="verification-actions">
+                    <button class="correction-btn primary large" onclick="proceedWithAnalysis()">
+                        ${t('analyzeThis')}
+                    </button>
+                </div>
+            `;
+            
+            // Populate the inline editor with detected pieces
+            populateInlineEditor(result.fen);
+            
+            // Store the result for later
+            window.pendingResult = result;
+        }
+        
+        function populateInlineEditor(fen) {
+            // Parse FEN and populate inline editor fields
+            const parts = fen.split(' ');
+            const position = parts[0];
+            
+            const pieceSquares = {
+                'K': [], 'Q': [], 'R': [], 'B': [], 'N': [], 'P': [],
+                'k': [], 'q': [], 'r': [], 'b': [], 'n': [], 'p': []
+            };
+            
+            const ranks = position.split('/');
+            for (let rankIdx = 0; rankIdx < 8; rankIdx++) {
+                const rank = ranks[rankIdx];
+                let fileIdx = 0;
+                
+                for (const char of rank) {
+                    if (/\d/.test(char)) {
+                        fileIdx += parseInt(char);
+                    } else {
+                        const file = String.fromCharCode('a'.charCodeAt(0) + fileIdx);
+                        const rankNum = 8 - rankIdx;
+                        const square = file + rankNum;
+                        
+                        if (pieceSquares[char] !== undefined) {
+                            pieceSquares[char].push(square);
+                        }
+                        fileIdx++;
+                    }
+                }
+            }
+            
+            // Populate inline editor fields
+            document.getElementById('edit_wK').value = pieceSquares['K'].join(', ');
+            document.getElementById('edit_wQ').value = pieceSquares['Q'].join(', ');
+            document.getElementById('edit_wR').value = pieceSquares['R'].join(', ');
+            document.getElementById('edit_wB').value = pieceSquares['B'].join(', ');
+            document.getElementById('edit_wN').value = pieceSquares['N'].join(', ');
+            document.getElementById('edit_wP').value = pieceSquares['P'].join(', ');
+            document.getElementById('edit_bK').value = pieceSquares['k'].join(', ');
+            document.getElementById('edit_bQ').value = pieceSquares['q'].join(', ');
+            document.getElementById('edit_bR').value = pieceSquares['r'].join(', ');
+            document.getElementById('edit_bB').value = pieceSquares['b'].join(', ');
+            document.getElementById('edit_bN').value = pieceSquares['n'].join(', ');
+            document.getElementById('edit_bP').value = pieceSquares['p'].join(', ');
+        }
+        
+        function toggleMobileEditor(btn) {
+            const editor = document.querySelector('.inline-editor');
+            const isExpanded = editor.classList.toggle('mobile-expanded');
+            btn.classList.toggle('expanded', isExpanded);
+            
+            // Update button text
+            const textSpan = btn.querySelector('span[data-i18n]');
+            if (textSpan) {
+                textSpan.textContent = isExpanded ? t('hideEditor') : t('editPositionMobile');
+            }
+            
+            // Scroll to editor if expanded
+            if (isExpanded) {
+                setTimeout(() => {
+                    editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+        
+        let mobileComparisonView = 0; // 0 = screenshot, 1 = detected
+        
+        function setMobileComparisonView(view) {
+            mobileComparisonView = view;
+            
+            const viewScreenshot = document.getElementById('mobileViewScreenshot');
+            const viewDetected = document.getElementById('mobileViewDetected');
+            const labelScreenshot = document.getElementById('labelScreenshot');
+            const labelDetected = document.getElementById('labelDetected');
+            const dot1 = document.getElementById('dot1');
+            const dot2 = document.getElementById('dot2');
+            
+            if (mobileComparisonView === 0) {
+                viewScreenshot?.classList.add('active');
+                viewDetected?.classList.remove('active');
+                labelScreenshot?.classList.add('active');
+                labelDetected?.classList.remove('active');
+                dot1?.classList.add('active');
+                dot2?.classList.remove('active');
+            } else {
+                viewScreenshot?.classList.remove('active');
+                viewDetected?.classList.add('active');
+                labelScreenshot?.classList.remove('active');
+                labelDetected?.classList.add('active');
+                dot1?.classList.remove('active');
+                dot2?.classList.add('active');
+            }
+        }
+        
+        function toggleMobileComparison() {
+            setMobileComparisonView(1 - mobileComparisonView);
+        }
+        
+        function updateLivePreview() {
+            // Generate FEN from inline editor
+            const board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            const pieces = [
+                { id: 'edit_wK', char: 'K' },
+                { id: 'edit_wQ', char: 'Q' },
+                { id: 'edit_wR', char: 'R' },
+                { id: 'edit_wB', char: 'B' },
+                { id: 'edit_wN', char: 'N' },
+                { id: 'edit_wP', char: 'P' },
+                { id: 'edit_bK', char: 'k' },
+                { id: 'edit_bQ', char: 'q' },
+                { id: 'edit_bR', char: 'r' },
+                { id: 'edit_bB', char: 'b' },
+                { id: 'edit_bN', char: 'n' },
+                { id: 'edit_bP', char: 'p' },
+            ];
+            
+            for (const piece of pieces) {
+                const input = document.getElementById(piece.id);
+                if (!input) continue;
+                const squares = parseSquares(input.value);
+                for (const sq of squares) {
+                    const { file, rank } = squareToIndex(sq);
+                    board[7 - rank][file] = piece.char;
+                }
+            }
+            
+            // Generate FEN
+            let fen = '';
+            for (let rank = 0; rank < 8; rank++) {
+                let emptyCount = 0;
+                for (let file = 0; file < 8; file++) {
+                    if (board[rank][file]) {
+                        if (emptyCount > 0) {
+                            fen += emptyCount;
+                            emptyCount = 0;
+                        }
+                        fen += board[rank][file];
+                    } else {
+                        emptyCount++;
+                    }
+                }
+                if (emptyCount > 0) {
+                    fen += emptyCount;
+                }
+                if (rank < 7) fen += '/';
+            }
+            
+            const turnSelect = document.getElementById('verifyTurnSelect');
+            const turn = turnSelect ? turnSelect.value : 'w';
+            fen += ` ${turn} - - 0 1`;
+            
+            // Update the live preview boards (desktop and mobile)
+            const previewBoard = document.getElementById('livePreviewBoard');
+            const previewBoardMobile = document.getElementById('livePreviewBoardMobile');
+            const boardHtml = renderBoard(fen, window.boardFlipped || false);
+            
+            if (previewBoard) {
+                previewBoard.innerHTML = boardHtml;
+            }
+            if (previewBoardMobile) {
+                previewBoardMobile.innerHTML = boardHtml;
+            }
+            
+            // Update pending result
+            if (window.pendingResult) {
+                window.pendingResult.fen = fen;
+                window.pendingResult.turn = turn === 'w' ? 'white' : 'black';
+            }
+            
+            // Also sync with main manual entry
+            document.getElementById('wK').value = document.getElementById('edit_wK').value;
+            document.getElementById('wQ').value = document.getElementById('edit_wQ').value;
+            document.getElementById('wR').value = document.getElementById('edit_wR').value;
+            document.getElementById('wB').value = document.getElementById('edit_wB').value;
+            document.getElementById('wN').value = document.getElementById('edit_wN').value;
+            document.getElementById('wP').value = document.getElementById('edit_wP').value;
+            document.getElementById('bK').value = document.getElementById('edit_bK').value;
+            document.getElementById('bQ').value = document.getElementById('edit_bQ').value;
+            document.getElementById('bR').value = document.getElementById('edit_bR').value;
+            document.getElementById('bB').value = document.getElementById('edit_bB').value;
+            document.getElementById('bN').value = document.getElementById('edit_bN').value;
+            document.getElementById('bP').value = document.getElementById('edit_bP').value;
+            document.getElementById('turnSelect').value = turn;
+            document.getElementById('generatedFen').value = fen;
+            document.getElementById('fenInput').value = fen;
+        }
+
+        async function proceedWithAnalysis() {
+            if (!window.pendingResult) return;
+            
+            const fen = window.pendingResult.fen;
+            const content = document.getElementById('resultsContent');
+            
+            // Show loading state
+            const analyzingTitle = currentLang === 'pt' ? '⏳ Analisando Posição...' : '⏳ Analyzing Position...';
+            const analyzingDesc = currentLang === 'pt' ? 'Executando análise do Stockfish. Isso pode levar alguns segundos.' : 'Running Stockfish analysis. This may take a few seconds.';
+            content.innerHTML = `
+                <div class="verification-prompt">
+                    <h3>${analyzingTitle}</h3>
+                    <p>${analyzingDesc}</p>
+                </div>
+                <div style="display: flex; justify-content: center; padding: 2rem;">
+                    <div class="spinner" style="width: 40px; height: 40px; border-width: 3px;"></div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fen: fen,
+                        depth: parseInt(depthInput.value),
+                        num_moves: 3,
+                        lang: currentLang
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    showError(result.error + ' Try editing the position using "Edit Position" button.');
+                    // Re-show the verification prompt so user can fix it
+                    showImageVerificationPrompt(window.pendingResult);
+                } else {
+                    window.pendingResult = null;
+                    displayResults(result);
+                }
+            } catch (error) {
+                showError('Failed to analyze position. Please try again.');
+                showImageVerificationPrompt(window.pendingResult);
+            }
+        }
+
+
+        // Manual piece entry functions
+        function parseSquares(input) {
+            // Parse comma or space separated squares like "a1, b2" or "a1 b2"
+            if (!input || !input.trim()) return [];
+            return input.toLowerCase()
+                .split(/[,\s]+/)
+                .map(s => s.trim())
+                .filter(s => /^[a-h][1-8]$/.test(s));
+        }
+
+        function squareToIndex(square) {
+            // Convert "a1" to {file: 0, rank: 0}, "h8" to {file: 7, rank: 7}
+            const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
+            const rank = parseInt(square[1]) - 1;
+            return { file, rank };
+        }
+
+        function generateFenFromPieces() {
+            // Initialize empty 8x8 board
+            const board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            // Piece mappings
+            const pieces = [
+                { id: 'wK', char: 'K' },
+                { id: 'wQ', char: 'Q' },
+                { id: 'wR', char: 'R' },
+                { id: 'wB', char: 'B' },
+                { id: 'wN', char: 'N' },
+                { id: 'wP', char: 'P' },
+                { id: 'bK', char: 'k' },
+                { id: 'bQ', char: 'q' },
+                { id: 'bR', char: 'r' },
+                { id: 'bB', char: 'b' },
+                { id: 'bN', char: 'n' },
+                { id: 'bP', char: 'p' },
+            ];
+            
+            // Place pieces on board
+            for (const piece of pieces) {
+                const input = document.getElementById(piece.id).value;
+                const squares = parseSquares(input);
+                for (const sq of squares) {
+                    const { file, rank } = squareToIndex(sq);
+                    board[7 - rank][file] = piece.char; // FEN is from rank 8 to 1
+                }
+            }
+            
+            // Generate FEN piece placement
+            let fen = '';
+            for (let rank = 0; rank < 8; rank++) {
+                let emptyCount = 0;
+                for (let file = 0; file < 8; file++) {
+                    if (board[rank][file]) {
+                        if (emptyCount > 0) {
+                            fen += emptyCount;
+                            emptyCount = 0;
+                        }
+                        fen += board[rank][file];
+                    } else {
+                        emptyCount++;
+                    }
+                }
+                if (emptyCount > 0) {
+                    fen += emptyCount;
+                }
+                if (rank < 7) fen += '/';
+            }
+            
+            // Add other FEN fields
+            const turn = document.getElementById('turnSelect').value;
+            fen += ` ${turn} - - 0 1`;
+            
+            document.getElementById('generatedFen').value = fen;
+            
+            // Also update the main FEN input
+            document.getElementById('fenInput').value = fen;
+            
+            return fen;
+        }
+
+        // Auto-generate FEN when pieces change
+        document.querySelectorAll('#tab-manual input[type="text"]').forEach(input => {
+            input.addEventListener('input', () => {
+                if (document.querySelector('.tab-btn.active').dataset.tab === 'manual') {
+                    generateFenFromPieces();
+                }
+            });
+        });
+        
+        document.getElementById('turnSelect').addEventListener('change', () => {
+            if (document.querySelector('.tab-btn.active').dataset.tab === 'manual') {
+                generateFenFromPieces();
+            }
+        });
+    </script>
+</body>
+</html>

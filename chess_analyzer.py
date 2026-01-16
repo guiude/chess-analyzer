@@ -68,6 +68,11 @@ class ChessAnalyzer:
                     "  Or set STOCKFISH_PATH environment variable"
                 )
             self.engine = chess.engine.SimpleEngine.popen_uci(self.engine_path)
+            # Configure for low memory usage (Render free tier has 512MB)
+            self.engine.configure({
+                "Hash": 16,      # Use only 16MB hash table (default is 16, but let's be explicit)
+                "Threads": 1     # Single thread to reduce memory
+            })
         return self.engine
     
     def check_engine(self) -> bool:
@@ -94,9 +99,11 @@ class ChessAnalyzer:
         except ValueError as e:
             return False, f"Invalid FEN: {str(e)}"
     
-    def analyze(self, fen: str, depth: int = 20, num_moves: int = 3, lang: str = 'en') -> Dict[str, Any]:
+    def analyze(self, fen: str, depth: int = 18, num_moves: int = 3, lang: str = 'en') -> Dict[str, Any]:
         """
         Analyze a chess position.
+        
+        Note: Depth is capped at 20 to prevent memory issues on free hosting tiers.
         
         Args:
             fen: FEN string representing the position
@@ -111,6 +118,9 @@ class ChessAnalyzer:
         is_valid, message = self.validate_fen(fen)
         if not is_valid:
             raise ValueError(message)
+        
+        # Cap depth to prevent memory issues on free hosting
+        depth = min(depth, 20)
         
         board = chess.Board(fen)
         engine = self._get_engine()

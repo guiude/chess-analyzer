@@ -1981,13 +1981,41 @@
         }
         
         // Initialize language on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             setLanguage(currentLang);
             
             // Language button click handlers
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
             });
+            
+            // Fetch optimal settings from server
+            try {
+                const response = await fetch('/api/settings');
+                if (response.ok) {
+                    const settings = await response.json();
+                    const depthInput = document.getElementById('depthInput');
+                    const depthValue = document.getElementById('depthValue');
+                    
+                    // Update slider with server's optimal settings
+                    depthInput.max = settings.max_depth;
+                    depthInput.value = settings.default_depth;
+                    depthValue.textContent = settings.default_depth;
+                    
+                    // Update labels
+                    const deeperLabel = document.querySelector('[data-i18n="deeper"]');
+                    if (deeperLabel) {
+                        const deeperText = currentLang === 'pt' 
+                            ? `Mais profundo (${settings.max_depth})`
+                            : `Deeper (${settings.max_depth})`;
+                        deeperLabel.textContent = deeperText;
+                    }
+                    
+                    console.log(`Server: ${settings.memory_mb}MB RAM → depth ${settings.default_depth}/${settings.max_depth}`);
+                }
+            } catch (e) {
+                console.log('Using default depth settings');
+            }
         });
 
         // SVG Chess Pieces (standard Cburnett design)

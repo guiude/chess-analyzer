@@ -30,6 +30,17 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    """Return optimal analysis settings based on server resources."""
+    from chess_analyzer import OPTIMAL_SETTINGS, get_memory_mb
+    return jsonify({
+        "max_depth": OPTIMAL_SETTINGS["max_depth"],
+        "default_depth": OPTIMAL_SETTINGS["default_depth"],
+        "memory_mb": get_memory_mb()
+    })
+
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze_position():
     """

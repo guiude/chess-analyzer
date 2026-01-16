@@ -7,6 +7,59 @@ import chess
 import chess.engine
 import os
 from typing import Optional, Tuple, List, Dict, Any
+
+def get_memory_mb() -> int:
+    """Get available system memory in MB."""
+    try:
+        import psutil
+        return psutil.virtual_memory().total // (1024 * 1024)
+    except ImportError:
+        # Fallback: try to read from /proc/meminfo (Linux)
+        try:
+            with open('/proc/meminfo', 'r') as f:
+                for line in f:
+                    if line.startswith('MemTotal:'):
+                        return int(line.split()[1]) // 1024  # Convert KB to MB
+        except:
+            pass
+        # Default assumption: limited environment
+        return 512
+
+def get_optimal_settings() -> dict:
+    """Get optimal Stockfish settings based on available memory."""
+    memory_mb = get_memory_mb()
+    
+    if memory_mb >= 8000:  # 8GB+ (good desktop/laptop)
+        return {
+            "hash": 256,
+            "threads": 4,
+            "max_depth": 30,
+            "default_depth": 22
+        }
+    elif memory_mb >= 4000:  # 4GB+ (modest machine)
+        return {
+            "hash": 128,
+            "threads": 2,
+            "max_depth": 25,
+            "default_depth": 20
+        }
+    elif memory_mb >= 1000:  # 1GB+ (limited VPS)
+        return {
+            "hash": 64,
+            "threads": 1,
+            "max_depth": 22,
+            "default_depth": 18
+        }
+    else:  # <1GB (Render free tier, etc.)
+        return {
+            "hash": 16,
+            "threads": 1,
+            "max_depth": 20,
+            "default_depth": 16
+        }
+
+# Get settings at module load
+OPTIMAL_SETTINGS = get_optimal_settings()
 from openai import OpenAI
 
 
@@ -68,11 +121,13 @@ class ChessAnalyzer:
                     "  Or set STOCKFISH_PATH environment variable"
                 )
             self.engine = chess.engine.SimpleEngine.popen_uci(self.engine_path)
-            # Configure for low memory usage (Render free tier has 512MB)
+            # Configure based on available system memory
             self.engine.configure({
-                "Hash": 16,      # Use only 16MB hash table (default is 16, but let's be explicit)
-                "Threads": 1     # Single thread to reduce memory
+                "Hash": OPTIMAL_SETTINGS["hash"],
+                "Threads": OPTIMAL_SETTINGS["threads"]
             })
+            memory_mb = get_memory_mb()
+            print(f"Stockfish configured: {memory_mb}MB RAM detected → Hash={OPTIMAL_SETTINGS['hash']}MB, Threads={OPTIMAL_SETTINGS['threads']}")
         return self.engine
     
     def check_engine(self) -> bool:
@@ -99,11 +154,11 @@ class ChessAnalyzer:
         except ValueError as e:
             return False, f"Invalid FEN: {str(e)}"
     
-    def analyze(self, fen: str, depth: int = 18, num_moves: int = 3, lang: str = 'en') -> Dict[str, Any]:
+    def analyze(self, fen: str, depth: int = None, num_moves: int = 3, lang: str = 'en') -> Dict[str, Any]:
         """
         Analyze a chess position.
         
-        Note: Depth is capped at 20 to prevent memory issues on free hosting tiers.
+        Depth is automatically optimized based on available system memory.
         
         Args:
             fen: FEN string representing the position
@@ -119,8 +174,11 @@ class ChessAnalyzer:
         if not is_valid:
             raise ValueError(message)
         
-        # Cap depth to prevent memory issues on free hosting
-        depth = min(depth, 20)
+        # Use optimal depth based on system memory, with user override capped
+        if depth is None:
+            depth = OPTIMAL_SETTINGS["default_depth"]
+        else:
+            depth = min(depth, OPTIMAL_SETTINGS["max_depth"])
         
         board = chess.Board(fen)
         engine = self._get_engine()

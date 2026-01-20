@@ -3166,7 +3166,33 @@
             
             // Add other FEN fields
             const turn = document.getElementById('turnSelect').value;
-            fen += ` ${turn} - - 0 1`;
+            
+            // Calculate castling rights based on king and rook positions
+            let castling = '';
+            
+            // White kingside: King on e1 AND Rook on h1
+            if (board[7][4] === 'K' && board[7][7] === 'R') {
+                castling += 'K';
+            }
+            // White queenside: King on e1 AND Rook on a1
+            if (board[7][4] === 'K' && board[7][0] === 'R') {
+                castling += 'Q';
+            }
+            // Black kingside: King on e8 AND Rook on h8
+            if (board[0][4] === 'k' && board[0][7] === 'r') {
+                castling += 'k';
+            }
+            // Black queenside: King on e8 AND Rook on a8
+            if (board[0][4] === 'k' && board[0][0] === 'r') {
+                castling += 'q';
+            }
+            
+            // If no castling rights, use '-'
+            if (castling === '') {
+                castling = '-';
+            }
+            
+            fen += ` ${turn} ${castling} - 0 1`;
             
             document.getElementById('generatedFen').value = fen;
             

@@ -302,6 +302,221 @@ class ChessAnalyzer:
             'analysis_depth': depth
         }
     
+    def evaluate_move(self, fen: str, move: str, depth: int = None, lang: str = 'en') -> Dict[str, Any]:
+        """
+        Evaluate a specific move in a position.
+        
+        Args:
+            fen: FEN string representing the position
+            move: Move to evaluate (SAN like "Nf3" or UCI like "g1f3")
+            depth: Analysis depth
+            lang: Language code for explanations ('en' or 'pt')
+            
+        Returns:
+            Dictionary with move evaluation and comparison to best move
+        """
+        # Validate FEN
+        is_valid, message = self.validate_fen(fen)
+        if not is_valid:
+            raise ValueError(message)
+        
+        # Use optimal depth
+        if depth is None:
+            depth = OPTIMAL_SETTINGS["default_depth"]
+        else:
+            depth = min(depth, OPTIMAL_SETTINGS["max_depth"])
+        
+        board = chess.Board(fen)
+        is_white_turn = board.turn
+        
+        # Parse the move (try SAN first, then UCI)
+        try:
+            parsed_move = board.parse_san(move)
+        except ValueError:
+            try:
+                parsed_move = chess.Move.from_uci(move)
+                if parsed_move not in board.legal_moves:
+                    raise ValueError(f"Illegal move: {move}")
+            except ValueError:
+                raise ValueError(f"Invalid move format: {move}")
+        
+        if parsed_move not in board.legal_moves:
+            raise ValueError(f"Illegal move: {move}")
+        
+        move_san = board.san(parsed_move)
+        
+        engine = self._get_engine()
+        
+        # Get best move analysis
+        best_info = engine.analyse(board, chess.engine.Limit(depth=depth))
+        best_move = best_info['pv'][0] if 'pv' in best_info else None
+        best_score = best_info['score'].white() if 'score' in best_info else None
+        best_move_san = board.san(best_move) if best_move else "?"
+        
+        # Make the user's move and analyze the resulting position
+        board.push(parsed_move)
+        after_info = engine.analyse(board, chess.engine.Limit(depth=depth))
+        after_score = after_info['score'].white() if 'score' in after_info else None
+        board.pop()
+        
+        # Calculate scores
+        best_score_cp = best_score.score(mate_score=10000) if best_score and best_score.score() is not None else (10000 if best_score and best_score.mate() and best_score.mate() > 0 else -10000 if best_score else 0)
+        
+        # The move score is the negation of the position after the move (from opponent's perspective)
+        after_score_cp = after_score.score(mate_score=10000) if after_score and after_score.score() is not None else (10000 if after_score and after_score.mate() and after_score.mate() > 0 else -10000 if after_score else 0)
+        move_score_cp = -after_score_cp  # Negate because it's opponent's turn after our move
+        
+        # Score loss (how much worse than best move, in centipawns)
+        score_loss = best_score_cp - move_score_cp
+        
+        # Classify the move
+        is_best = parsed_move == best_move
+        if is_best:
+            classification = 'best'
+            classification_emoji = '🏆'
+        elif score_loss <= 10:
+            classification = 'excellent'
+            classification_emoji = '✨'
+        elif score_loss <= 30:
+            classification = 'good'
+            classification_emoji = '👍'
+        elif score_loss <= 80:
+            classification = 'inaccuracy'
+            classification_emoji = '⚠️'
+        elif score_loss <= 200:
+            classification = 'mistake'
+            classification_emoji = '❌'
+        else:
+            classification = 'blunder'
+            classification_emoji = '💀'
+        
+        # Format scores from moving side's perspective
+        display_move_score = move_score_cp if is_white_turn else -move_score_cp
+        display_best_score = best_score_cp if is_white_turn else -best_score_cp
+        
+        # Generate explanation
+        explanation = self._generate_move_evaluation_explanation(
+            board, move_san, best_move_san, classification, 
+            display_move_score, display_best_score, score_loss, lang
+        )
+        
+        return {
+            'fen': fen,
+            'move': move_san,
+            'move_uci': parsed_move.uci(),
+            'is_best_move': is_best,
+            'classification': classification,
+            'classification_emoji': classification_emoji,
+            'score': f"{display_move_score/100:+.2f}",
+            'score_cp': display_move_score,
+            'best_move': best_move_san,
+            'best_move_uci': best_move.uci() if best_move else None,
+            'best_score': f"{display_best_score/100:+.2f}",
+            'best_score_cp': display_best_score,
+            'score_loss_cp': score_loss,
+            'explanation': explanation,
+            'analysis_depth': depth
+        }
+    
+    def _generate_move_evaluation_explanation(
+        self, board: chess.Board, move: str, best_move: str,
+        classification: str, move_score: int, best_score: int, 
+        score_loss: int, lang: str
+    ) -> str:
+        """Generate explanation for a move evaluation."""
+        turn = "White" if board.turn else "Black"
+        
+        if lang == 'pt':
+            turn = "Brancas" if board.turn else "Pretas"
+            classifications = {
+                'best': 'o melhor lance',
+                'excellent': 'um lance excelente',
+                'good': 'um bom lance',
+                'inaccuracy': 'uma imprecisão',
+                'mistake': 'um erro',
+                'blunder': 'uma jogada desastrosa'
+            }
+            class_text = classifications.get(classification, classification)
+            
+            if classification == 'best':
+                text = f"**{move}** é {class_text}! "
+                text += f"Esta jogada mantém a avaliação em {move_score/100:+.2f}."
+            else:
+                text = f"**{move}** é {class_text}. "
+                text += f"A avaliação após este lance é {move_score/100:+.2f}. "
+                text += f"O melhor lance seria **{best_move}** com avaliação {best_score/100:+.2f}. "
+                text += f"Perda de {score_loss/100:.2f} peões."
+        else:
+            classifications = {
+                'best': 'the best move',
+                'excellent': 'an excellent move',
+                'good': 'a good move',
+                'inaccuracy': 'an inaccuracy',
+                'mistake': 'a mistake',
+                'blunder': 'a blunder'
+            }
+            class_text = classifications.get(classification, classification)
+            
+            if classification == 'best':
+                text = f"**{move}** is {class_text}! "
+                text += f"This move maintains an evaluation of {move_score/100:+.2f}."
+            else:
+                text = f"**{move}** is {class_text}. "
+                text += f"The evaluation after this move is {move_score/100:+.2f}. "
+                text += f"The best move would be **{best_move}** with evaluation {best_score/100:+.2f}. "
+                text += f"Loss of {score_loss/100:.2f} pawns."
+        
+        # Use LLM for richer explanation if available
+        if self.openai_client:
+            try:
+                return self._generate_llm_move_explanation(
+                    board, move, best_move, classification, 
+                    move_score, best_score, score_loss, lang
+                )
+            except Exception:
+                pass
+        
+        return text
+    
+    def _generate_llm_move_explanation(
+        self, board: chess.Board, move: str, best_move: str,
+        classification: str, move_score: int, best_score: int, 
+        score_loss: int, lang: str
+    ) -> str:
+        """Use LLM to generate a richer move evaluation explanation."""
+        turn = "White" if board.turn else "Black"
+        lang_instruction = "Respond in Brazilian Portuguese." if lang == 'pt' else "Respond in English."
+        
+        prompt = f"""Analyze this chess move evaluation:
+
+Position (FEN): {board.fen()}
+Move played: {move}
+Best move: {best_move}
+Classification: {classification}
+Move evaluation: {move_score/100:+.2f}
+Best move evaluation: {best_score/100:+.2f}
+Score loss: {score_loss/100:.2f} pawns
+
+{turn} to move.
+
+Explain in 2-3 sentences:
+1. Why is this move classified as "{classification}"?
+2. If not the best move, what does the best move achieve that this move doesn't?
+
+Keep it concise and instructive for chess improvement."""
+
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": f"You are a chess coach explaining move quality to a student. {lang_instruction}"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=250,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content.strip()
+
     def _format_display_score(self, raw_score: str, is_white_turn: bool) -> str:
         """Format score from the moving side's perspective."""
         if raw_score == 'N/A':

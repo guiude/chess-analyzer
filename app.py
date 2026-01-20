@@ -345,6 +345,43 @@ def parse_simple_correction(original_fen: str, correction: str) -> str:
         return None
 
 
+@app.route('/api/evaluate-move', methods=['POST'])
+def evaluate_move():
+    """
+    Evaluate a specific move in a position.
+    
+    Request JSON:
+    {
+        "fen": "FEN string",
+        "move": "move in SAN (e.g., 'Nf3') or UCI (e.g., 'g1f3')",
+        "depth": optional analysis depth,
+        "lang": optional language code ("en" or "pt", default "en")
+    }
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    fen = data.get('fen')
+    move = data.get('move')
+    depth = data.get('depth')
+    lang = data.get('lang', 'en')
+    
+    if not fen:
+        return jsonify({"error": "FEN is required"}), 400
+    if not move:
+        return jsonify({"error": "Move is required"}), 400
+    
+    try:
+        result = analyzer.evaluate_move(fen, move, depth=depth, lang=lang)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Evaluation error: {str(e)}"}), 400
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""

@@ -1794,6 +1794,15 @@
                             <span data-i18n="deeper">Deeper (20)</span>
                         </div>
                     </div>
+                    
+                    <div class="fen-input-group" style="margin-top: 1.5rem;">
+                        <label for="moveInput" data-i18n="evaluateMove">Evaluate Specific Move (optional)</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" id="moveInput" placeholder="e.g. Qxf2, Nf3, e4" style="flex: 1; font-family: var(--font-mono);">
+                            <button type="button" onclick="clearMoveInput()" style="padding: 0.5rem 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; color: var(--text-muted);" title="Clear">✕</button>
+                        </div>
+                        <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;" data-i18n="evaluateMoveHint">Leave empty to see top 3 moves</small>
+                    </div>
                 </div>
 
                 <button class="analyze-btn" id="analyzeBtn" onclick="analyzePosition()">
@@ -1843,9 +1852,15 @@
                 analysisDepth: "Analysis Depth",
                 faster: "Faster (10)",
                 deeper: "Deeper (20)",
+                evaluateMove: "Evaluate Specific Move (optional)",
+                evaluateMoveHint: "Leave empty to see top 3 moves",
                 analyzePosition: "Analyze Position",
                 analysisResults: "Analysis Results",
                 enterPosition: "Enter a position to see the analysis",
+                moveEvaluation: "Move Evaluation",
+                bestMoveWouldBe: "Best move would be",
+                scoreLoss: "Score loss",
+                pawns: "pawns",
                 footer: 'Powered by <a href="https://stockfishchess.org/" target="_blank">Stockfish</a> chess engine • Built with Flask & Python',
                 verifyTitle: "📷 Verify & Edit Position",
                 verifyDesc: "Compare your screenshot with the AI interpretation. Edit any incorrect pieces below - the board updates live.",
@@ -1907,9 +1922,15 @@
                 analysisDepth: "Profundidade da Análise",
                 faster: "Mais rápido (10)",
                 deeper: "Mais profundo (20)",
+                evaluateMove: "Avaliar Lance Específico (opcional)",
+                evaluateMoveHint: "Deixe vazio para ver os 3 melhores lances",
                 analyzePosition: "Analisar Posição",
                 analysisResults: "Resultados da Análise",
                 enterPosition: "Insira uma posição para ver a análise",
+                moveEvaluation: "Avaliação do Lance",
+                bestMoveWouldBe: "O melhor lance seria",
+                scoreLoss: "Perda de pontuação",
+                pawns: "peões",
                 footer: 'Desenvolvido com <a href="https://stockfishchess.org/" target="_blank">Stockfish</a> • Construído com Flask & Python',
                 verifyTitle: "📷 Verificar e Editar Posição",
                 verifyDesc: "Compare sua captura de tela com a interpretação da IA. Edite as peças incorretas abaixo - o tabuleiro atualiza em tempo real.",
@@ -2128,10 +2149,16 @@
             imageInput.value = '';
         }
 
+        function clearMoveInput() {
+            document.getElementById('moveInput').value = '';
+        }
+
         async function analyzePosition() {
             const btn = document.getElementById('analyzeBtn');
             const fenInput = document.getElementById('fenInput');
+            const moveInput = document.getElementById('moveInput');
             const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+            const moveToEvaluate = moveInput.value.trim();
             
             const data = {
                 depth: parseInt(depthInput.value),
@@ -2211,18 +2238,38 @@
 
             try {
                 data.lang = currentLang;
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+                
+                // Check if we're evaluating a specific move
+                if (moveToEvaluate) {
+                    data.move = moveToEvaluate;
+                    const response = await fetch('/api/evaluate-move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
 
-                const result = await response.json();
+                    const result = await response.json();
 
-                if (result.error) {
-                    showError(result.error);
+                    if (result.error) {
+                        showError(result.error);
+                    } else {
+                        displayMoveEvaluation(result);
+                    }
                 } else {
-                    displayResults(result);
+                    // Regular analysis - get top 3 moves
+                    const response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.error) {
+                        showError(result.error);
+                    } else {
+                        displayResults(result);
+                    }
                 }
             } catch (error) {
                 showError(t('errorAnalysis'));
@@ -2300,6 +2347,108 @@
             `;
 
             // Always update FEN input with the analyzed position
+            document.getElementById('fenInput').value = result.fen;
+        }
+
+        function displayMoveEvaluation(result) {
+            const content = document.getElementById('resultsContent');
+            const placeholder = document.getElementById('placeholder');
+            
+            placeholder.style.display = 'none';
+            content.style.display = 'block';
+
+            // Use stored board orientation for consistent display
+            const flipped = window.boardFlipped || false;
+            const boardHtml = renderBoard(result.fen, flipped);
+            const explanation = formatExplanation(result.explanation);
+            
+            // Generate rank and file labels based on orientation
+            const rankLabels = flipped 
+                ? '<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>'
+                : '<span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>';
+            const fileLabels = flipped
+                ? '<span>h</span><span>g</span><span>f</span><span>e</span><span>d</span><span>c</span><span>b</span><span>a</span>'
+                : '<span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>';
+
+            // Classification colors and styling
+            const classificationColors = {
+                'best': '#4ade80',      // green
+                'excellent': '#22d3ee', // cyan
+                'good': '#60a5fa',      // blue
+                'inaccuracy': '#fbbf24', // yellow
+                'mistake': '#f97316',   // orange
+                'blunder': '#ef4444'    // red
+            };
+            const color = classificationColors[result.classification] || '#888';
+            
+            // Classification translations
+            const classificationNames = {
+                'best': currentLang === 'pt' ? 'Melhor lance!' : 'Best move!',
+                'excellent': currentLang === 'pt' ? 'Excelente' : 'Excellent',
+                'good': currentLang === 'pt' ? 'Bom' : 'Good',
+                'inaccuracy': currentLang === 'pt' ? 'Imprecisão' : 'Inaccuracy',
+                'mistake': currentLang === 'pt' ? 'Erro' : 'Mistake',
+                'blunder': currentLang === 'pt' ? 'Desastre' : 'Blunder'
+            };
+
+            const turn = result.fen.split(' ')[1] === 'w' ? t('white') : t('black');
+            
+            content.innerHTML = `
+                <div class="board-wrapper">
+                    <div class="board-frame">
+                        <div class="board-with-coordinates">
+                            <div class="rank-labels">
+                                ${rankLabels}
+                            </div>
+                            <div class="chess-board">${boardHtml}</div>
+                            <div class="corner-spacer"></div>
+                            <div class="file-labels">
+                                ${fileLabels}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="turn-indicator">
+                        <div class="turn-dot ${result.fen.split(' ')[1] === 'w' ? 'white' : 'black'}"></div>
+                        <span>${turn} ${t('toMove')}</span>
+                    </div>
+                </div>
+
+                <div class="analysis-card" style="text-align: center;">
+                    <h3 style="margin-bottom: 1rem;">${t('moveEvaluation')}</h3>
+                    
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="font-size: 3rem;">${result.classification_emoji}</div>
+                        <div>
+                            <div style="font-size: 2rem; font-weight: 700; font-family: var(--font-mono);">${result.move}</div>
+                            <div style="color: ${color}; font-weight: 600; font-size: 1.1rem;">${classificationNames[result.classification]}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 400px; margin: 0 auto 1.5rem;">
+                        <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;">
+                            <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">${currentLang === 'pt' ? 'Seu lance' : 'Your move'}</div>
+                            <div style="font-size: 1.5rem; font-weight: 600; font-family: var(--font-mono);">${result.score}</div>
+                        </div>
+                        <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;">
+                            <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">${t('bestMoveWouldBe')}</div>
+                            <div style="font-size: 1.5rem; font-weight: 600; font-family: var(--font-mono);">${result.best_move} (${result.best_score})</div>
+                        </div>
+                    </div>
+                    
+                    ${!result.is_best_move ? `
+                    <div style="background: rgba(${color === '#ef4444' ? '239, 68, 68' : color === '#f97316' ? '249, 115, 22' : '251, 191, 36'}, 0.1); border: 1px solid ${color}; padding: 0.75rem 1rem; border-radius: 8px; display: inline-block;">
+                        ${t('scoreLoss')}: <strong>${(result.score_loss_cp / 100).toFixed(2)}</strong> ${t('pawns')}
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div class="analysis-card">
+                    <h3>${t('positionAnalysis')}</h3>
+                    <div class="explanation">${explanation}</div>
+                </div>
+            `;
+
+            // Update FEN input
             document.getElementById('fenInput').value = result.fen;
         }
 

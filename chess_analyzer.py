@@ -357,7 +357,14 @@ class ChessAnalyzer:
         board.push(parsed_move)
         after_info = engine.analyse(board, chess.engine.Limit(depth=depth))
         after_score = after_info['score'].white() if 'score' in after_info else None
+        
+        # Get the continuation line (best moves after the user's move)
+        continuation_pv = after_info.get('pv', [])[:7]  # Get up to 7 moves
+        continuation_san = self._pv_to_san(board, continuation_pv)
         board.pop()
+        
+        # Build the full line: user's move + continuation
+        full_line_san = [move_san] + continuation_san
         
         # Calculate scores
         best_score_cp = best_score.score(mate_score=10000) if best_score and best_score.score() is not None else (10000 if best_score and best_score.mate() and best_score.mate() > 0 else -10000 if best_score else 0)
@@ -414,6 +421,8 @@ class ChessAnalyzer:
             'best_score': f"{display_best_score/100:+.2f}",
             'best_score_cp': display_best_score,
             'score_loss_cp': score_loss,
+            'continuation': full_line_san,
+            'continuation_str': ' '.join(full_line_san),
             'explanation': explanation,
             'analysis_depth': depth
         }

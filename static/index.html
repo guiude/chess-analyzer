@@ -3053,6 +3053,7 @@
             
             const fen = window.pendingResult.fen;
             const content = document.getElementById('resultsContent');
+            const moveToEvaluate = document.getElementById('moveInput').value.trim();
             
             // Show loading state
             const analyzingTitle = currentLang === 'pt' ? '⏳ Analisando Posição...' : '⏳ Analyzing Position...';
@@ -3068,26 +3069,52 @@
             `;
             
             try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fen: fen,
-                        depth: parseInt(depthInput.value),
-                        num_moves: 3,
-                        lang: currentLang
-                    })
-                });
+                let response, result;
                 
-                const result = await response.json();
-                
-                if (result.error) {
-                    showError(result.error + ' Try editing the position using "Edit Position" button.');
-                    // Re-show the verification prompt so user can fix it
-                    showImageVerificationPrompt(window.pendingResult);
+                // Check if we're evaluating a specific move
+                if (moveToEvaluate) {
+                    response = await fetch('/api/evaluate-move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fen: fen,
+                            move: moveToEvaluate,
+                            depth: parseInt(depthInput.value),
+                            lang: currentLang
+                        })
+                    });
+                    
+                    result = await response.json();
+                    
+                    if (result.error) {
+                        showError(result.error);
+                        showImageVerificationPrompt(window.pendingResult);
+                    } else {
+                        window.pendingResult = null;
+                        displayMoveEvaluation(result);
+                    }
                 } else {
-                    window.pendingResult = null;
-                    displayResults(result);
+                    // Regular analysis - get top 3 moves
+                    response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fen: fen,
+                            depth: parseInt(depthInput.value),
+                            num_moves: 3,
+                            lang: currentLang
+                        })
+                    });
+                    
+                    result = await response.json();
+                    
+                    if (result.error) {
+                        showError(result.error + ' Try editing the position using "Edit Position" button.');
+                        showImageVerificationPrompt(window.pendingResult);
+                    } else {
+                        window.pendingResult = null;
+                        displayResults(result);
+                    }
                 }
             } catch (error) {
                 showError('Failed to analyze position. Please try again.');

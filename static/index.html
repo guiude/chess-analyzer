@@ -2445,16 +2445,7 @@
                     <div style="margin-top: 1.5rem; text-align: left; background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;">
                         <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">${currentLang === 'pt' ? 'Sequência após o lance:' : 'Best sequence after move:'}</div>
                         <div style="font-family: var(--font-mono); font-size: 1rem; line-height: 1.6;">
-                            ${result.continuation.map((move, i) => {
-                                const isFirst = i === 0;
-                                const isWhiteMove = (result.fen.split(' ')[1] === 'w') ? (i % 2 === 0) : (i % 2 === 1);
-                                const style = isFirst 
-                                    ? 'background: var(--accent-color); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;' 
-                                    : isWhiteMove 
-                                        ? 'color: var(--text-primary);' 
-                                        : 'color: var(--text-muted);';
-                                return \`<span style="\${style}">\${move}</span>\`;
-                            }).join(' ')}
+                            ${formatContinuation(result.continuation, result.fen)}
                         </div>
                     </div>
                     ` : ''}
@@ -2614,6 +2605,28 @@
             });
             
             return html;
+        }
+
+        function formatContinuation(continuation, fen) {
+            if (!continuation || continuation.length === 0) return '';
+            
+            const isWhiteToMove = fen.split(' ')[1] === 'w';
+            
+            return continuation.map((move, i) => {
+                const isFirst = i === 0;
+                const isWhiteMove = isWhiteToMove ? (i % 2 === 0) : (i % 2 === 1);
+                
+                let style;
+                if (isFirst) {
+                    style = 'background: var(--accent-color); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;';
+                } else if (isWhiteMove) {
+                    style = 'color: var(--text-primary);';
+                } else {
+                    style = 'color: var(--text-muted);';
+                }
+                
+                return '<span style="' + style + '">' + move + '</span>';
+            }).join(' ');
         }
 
         function formatExplanation(text) {
